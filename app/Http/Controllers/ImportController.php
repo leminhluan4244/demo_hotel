@@ -10,8 +10,8 @@ class ImportController extends Controller
 {
     public function index(){
 
-        Excel::import(new IndexImport, 'import.xlsx');
-        dd('import success');
+        $listSheet = Excel::import(new IndexImport, 'import.xlsx');
+        dd($listSheet);
         // return redirect('/')->with('success', 'All good!');
     }
 }

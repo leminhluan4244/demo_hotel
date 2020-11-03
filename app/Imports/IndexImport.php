@@ -14,7 +14,7 @@ class IndexImport implements WithMultipleSheets, WithCalculatedFormulas
     */
     public function sheets(): array
     {
-        return [
+        $listSheet = [
             0 => '',
             1 => '',
             2 => new InOutProductsImport(),
@@ -24,5 +24,8 @@ class IndexImport implements WithMultipleSheets, WithCalculatedFormulas
             6 => '',
             7 => new ProductsImport(),
         ];
+        dd($listSheet[7]);
+        return $listSheet;
+
     }
 }

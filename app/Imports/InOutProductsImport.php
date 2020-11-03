@@ -8,6 +8,7 @@ class InOutProductsImport implements ToCollection
 {
     public function collection(Collection $rows)
     {
+        // dd($rows);
         return 1;
     }
 }
