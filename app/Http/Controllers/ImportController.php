@@ -12,6 +12,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class ImportController extends Controller
 {
@@ -19,10 +20,10 @@ class ImportController extends Controller
     public function index(){
         $inputFileName = public_path().'\import.xlsx';
         $this->spreadsheet = IOFactory::load($inputFileName);
-        $this->makeProduct();
-        $this->makeRoom();
+        // $this->makeProduct();
+        // $this->makeRoom();
         $this->makeBill();
-        // $this->inOutProductHistory();
+        $this->inOutProductHistory();
     }
 
     private function makeProduct(){
@@ -82,7 +83,7 @@ class ImportController extends Controller
     private function makeBill(){
         $sheet = $this->spreadsheet->getSheetByName('Ghi So');
         $insertParams = array();
-        $rowData = $sheet->rangeToArray('B14:T1000', null, true, false);
+        $rowData = $sheet->rangeToArray('B14:T100', null, true, false);
         foreach($rowData as $row){
             if(null == $row[0]){
                 break;
@@ -94,24 +95,27 @@ class ImportController extends Controller
                 } else {
                     $billType = 3;
                 }
+                $inDate = Date::excelToDateTimeObject($row[1]);
+                $outDate = null == $row[7] ? null : Date::excelToDateTimeObject($row[7]);
+                $inHour = $row[3];
+                $outHour = $row[5];
+                $inMinute = null == $row[4] ? "00" : $row[4];
+                $outMinute = null == $row[6] ? "00" : $row[6];
+                $billStartTime = Carbon::parse($inDate)->format('Y-m-d')." {$inHour}:{$inMinute}:00";
 
-                $inDate = $row[1];
-                $outDate = $row[7];
-                $inHourse = $row[3];
-                $outHourse = $row[5];
-                $inMinute = $row[4];
-                $outMinute = $row[6];
-                $billStartTime = Carbon::parse("{$inDate} {$inHourse}:{$inMinute}:00");
-                if(null == $outDate && null == $outHourse){
-                    $billEndTime = null;
-                } else if(null == $outDate && null != $outHourse) {
-                    if(null == $outMinute){
-                        $billEndTime = Carbon::parse("{$inDate} {$outHourse}:00:00");
+                if(null != $outDate){
+                    if(null != $outHour){
+                        $billEndTime = Carbon::parse($outDate)->format('Y-m-d')." {$outHour}:{$outMinute}:00";
                     } else {
-                        $billEndTime = Carbon::parse("{$inDate} {$outHourse}:{$outMinute}:00");
+                        $billEndTime = Carbon::parse($outDate)->format('Y-m-d')." 00:00}:00";
+                    }
+                } else {
+                    if(null != $outHour){
+                        $billEndTime = Carbon::parse($inDate)->format('Y-m-d')." {$outHour}:{$outMinute}:00";
+                    } else {
+                        $billEndTime = null;
                     }
                 }
-
                 $insertParams[] = array(
                     'bill_code' => $row[0],
                     'room_code' => $row[2],
@@ -120,11 +124,10 @@ class ImportController extends Controller
                     'bill_end_time' => $billEndTime,
                     'bill_total_time' => $row[12],
                     'bill_room_costs' => $row[13],
-                    'bill_deposit_costs' => $row[14],
-                    'bill_laundry_amount' => $row[16],
-                    'bill_laundry_total' => $row[18],
-                    'bill_total_service_cost' => $row[15] + $row[18],
-                    'bill_total_cost' => 0,
+                    'bill_laundry_amount' => null == $row[16] ? 0 : $row[16] ,
+                    'bill_laundry_costs' => null == $row[18] ? 0 : $row[18] ,
+                    'bill_total_service_cost' => $row[13] + $row[18],
+                    'bill_total_cost' => $row[13] + $row[18],
                 );
             }
         }
@@ -151,7 +154,7 @@ class ImportController extends Controller
                 break;
             } else {
                 if(null != $row[0]){
-                    $inOutDate = $row[0];
+                    $inOutDate = Carbon::parse(Date::excelToDateTimeObject($row[0]))->format('Y-m-d');
                 }
                 $productCode = $row[1];
                 $productInAmount = $row[3];
@@ -160,8 +163,12 @@ class ImportController extends Controller
                     $insertProductEnterParams[] = array(
                         'product_code' => $productCode,
                         'enter_amount' => $productInAmount,
+                        'enter_cost' => $row[7],
                         'enter_date' => $inOutDate,
                     );
+                    if(!isset($updateChangeAmount[$productCode])){
+                        $updateChangeAmount[$productCode] = 0;
+                    }
                     $updateChangeAmount[$productCode] += $productInAmount;
                 }
                 if(null != $productOutAmount){
@@ -169,8 +176,12 @@ class ImportController extends Controller
                         'bill_code' => $row[4],
                         'product_code' => $productCode,
                         'sales_amount' => $productOutAmount,
+                        'sales_cost' => $row[7],
                         'sales_date' => $inOutDate,
                     );
+                    if(!isset($updateChangeAmount[$productCode])){
+                        $updateChangeAmount[$productCode] = 0;
+                    }
                     $updateChangeAmount[$productCode] -= $productInAmount;
                 }
             }
@@ -184,6 +195,11 @@ class ImportController extends Controller
             if(!empty($updateChangeAmount)){
                 foreach ($updateChangeAmount as $key => $value){
                     Product::where('product_code', '=', $key)->update(['product_amount' => DB::raw("product_amount + ({$value})")]);
+                }
+            }
+            if(!empty($insertProductSaleParams)){
+                foreach ($insertProductSaleParams as $key => $value){
+                    Bill::where('bill_code', '=', $value['bill_code'])->update(['bill_total_cost' => DB::raw("bill_total_cost + {$value['sales_cost']}")]);
                 }
             }
             DB::commit();
