@@ -20,8 +20,8 @@ class ImportController extends Controller
     public function index(){
         $inputFileName = public_path().'\import.xlsx';
         $this->spreadsheet = IOFactory::load($inputFileName);
-        // $this->makeProduct();
-        // $this->makeRoom();
+        $this->makeProduct();
+        $this->makeRoom();
         $this->makeBill();
         $this->inOutProductHistory();
     }
@@ -126,8 +126,8 @@ class ImportController extends Controller
                     'bill_room_costs' => $row[13],
                     'bill_laundry_amount' => null == $row[16] ? 0 : $row[16] ,
                     'bill_laundry_costs' => null == $row[18] ? 0 : $row[18] ,
-                    'bill_total_service_cost' => $row[13] + $row[18],
-                    'bill_total_cost' => $row[13] + $row[18],
+                    'bill_total_service_cost' => $row[13],
+                    'bill_total_cost' => $row[13],
                 );
             }
         }
