@@ -19,7 +19,8 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();
 });
-Route::get('import', [ImportController::class, 'index']);
+Route::post('import', [ImportController::class, 'index']);
+Route::post('upload', [ImportController::class, 'upload']);
 Route::get('export/room', [ExportController::class, 'roomExport']);
 Route::get('export/product', [ExportController::class, 'productExport']);
 Route::get('export/all', [ExportController::class, 'allExport']);

@@ -10,20 +10,59 @@ use App\Models\Room;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Base\Response;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class ImportController extends Controller
 {
+    protected $ruleData = array();
+
     protected $spreadsheet = null;
+
+    public function __construct()
+    {
+        $this->ruleData['upload'] = [
+            'import_file' => 'required|max:10000|mimes:xlsx'
+        ];
+    }
+
+    public function upload(Request $request)
+    {
+        // setting config
+        $this->config([
+            'rule' => $this->ruleData['upload'],
+            'request' => $request,
+        ]);
+        // Run check validate if false
+        $this->exam();
+        if ($this->status == self::VALIDATE) {
+            return Response::errors(
+                $this->errors->all()
+            );
+        }
+
+        $file = $request->file('import_file');
+        $destinationPath = 'uploads';
+        $file->move($destinationPath,'import.xlsx');
+        return Response::response();
+    }
+
     public function index(){
-        $inputFileName = public_path().'\import.xlsx';
-        $this->spreadsheet = IOFactory::load($inputFileName);
-        $this->makeProduct();
-        $this->makeRoom();
-        $this->makeBill();
-        $this->inOutProductHistory();
+        try{
+            $inputFileName = public_path().'\uploads\import.xlsx';
+            $this->spreadsheet = IOFactory::load($inputFileName);
+            $this->makeProduct();
+            $this->makeRoom();
+            $this->makeBill();
+            $this->inOutProductHistory();
+            return Response::response();
+        } catch (Exception $e) {
+            $message = $e->getMessage();
+            return Response::errors(array('message' => $message));
+        }
+
     }
 
     private function makeProduct(){

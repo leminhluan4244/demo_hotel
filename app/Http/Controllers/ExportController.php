@@ -3,19 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Calculators\Calculator;
+use App\Http\Controllers\Base\Response;
 
 class ExportController extends Controller
 {
     public function roomExport(){
         $roomData = Calculator::calculateRoomExport();
-        return response()
-            ->json($roomData);
+        return Response::response($roomData);
     }
 
     public function productExport(){
         $productData = Calculator::calculateProductExport();
-        return response()
-            ->json($productData);
+        return Response::response($productData);
     }
 
     public function allExport(){
@@ -28,7 +27,6 @@ class ExportController extends Controller
             'productDetail' => $productData,
             'roomDetail' => $roomData,
         );
-        return response()
-            ->json($allData);
+        return Response::response($allData);
     }
 }
