@@ -45,6 +45,124 @@ class Calculator
         );
     }
 
+    public static function calculateRoomExportDate($room, $date){
+        $roomCostAndSales = Bill::select(
+            DB::raw('SUM(bill_total_service_cost) as total_service_cost'),
+            DB::raw('SUM(bill_laundry_costs) as total_laundry_costs'),
+            DB::raw('DATE(bill_end_time) AS bill_end_time'),
+            'room_code'
+        )
+        ->where('room_code', '=', $room)
+        ->where(DB::raw('DATE(bill_end_time)'), '=', $date)
+        ->groupBy('room_code', 'bill_end_time')
+        ->first();
+
+        return array(
+            'sumCost' => (int)$roomCostAndSales->total_laundry_costs,
+            'sumSales' => (int)$roomCostAndSales->total_service_cost,
+            'sumProfit' =>  (int)$roomCostAndSales->total_service_cost - (int)$roomCostAndSales->total_laundry_costs,
+            'room_code' => $roomCostAndSales->room_code,
+            'bill_end_time' => $roomCostAndSales->bill_end_time,
+        );
+    }
+
+    public static function calculateRoomExportDates($room){
+        $roomDataExport = array();
+        $roomCostAndSales = Bill::select(
+            DB::raw('SUM(bill_total_service_cost) as total_service_cost'),
+            DB::raw('SUM(bill_laundry_costs) as total_laundry_costs'),
+            DB::raw('DATE(bill_end_time) as end_time'),
+            'room_code'
+        )
+        ->where('room_code', '=', $room)
+        ->where('bill_end_time', '<>', null)
+        ->groupBy(DB::raw('DATE(bill_end_time)'), 'room_code')
+        ->get();
+        $sumCost = 0;
+        $sumSales = 0;
+        $sumProfit = 0;
+        foreach($roomCostAndSales as $value){
+            $roomDataExport[$value->end_time]['cost'] = (int)$value->total_laundry_costs;
+            $roomDataExport[$value->end_time]['sales'] = (int)$value->total_service_cost;
+            $roomDataExport[$value->end_time]['profit'] = $roomDataExport[$value->end_time]['sales'] - $roomDataExport[$value->end_time]['cost'];
+            $sumCost += $roomDataExport[$value->end_time]['cost'];
+            $sumSales += $roomDataExport[$value->end_time]['sales'];
+            $sumProfit += $roomDataExport[$value->end_time]['profit'];
+        }
+
+        return array(
+            'sumCost' => $sumCost,
+            'sumSales' => $sumSales,
+            'sumProfit' => $sumProfit,
+            'detail' => $roomDataExport,
+        );
+    }
+
+    public static function calculateDateAndRoom($date, $room){
+        $resultData = array(
+            'transactions' => 0,
+            'voided' => 0,
+            'customers' => 0,
+            'netsale' => 0,
+            'taxes' => 0,
+            'discounts' => 0,
+            'sales_data' => array(
+                'seriesName' => 'Sale Chart',
+                'data' => array()
+            ),
+            'sales_by_order_type' => array(),
+            'top_five_sales' => array()
+        );
+        // Service sale of date and room
+        $roomCostAndSales =
+            Bill::select(
+                DB::raw('SUM(bill_total_service_cost) as total_service_cost'),
+                DB::raw('SUM(bill_laundry_costs) as total_laundry_costs'),
+                DB::raw('DATE(bill_end_time) as end_time'),
+                'room_code'
+            )
+            ->where('room_code', '=', $room)
+            ->where('bill_end_time', '<>', null)
+            ->where(DB::raw('DATE(bill_end_time)'), '<=', $date)
+            ->groupBy(DB::raw('DATE(bill_end_time)'), 'room_code')
+            ->limit(7)
+            ->get();
+        foreach($roomCostAndSales as $value){
+            $resultData['sales_data']['data'][]= array(
+                'x' => $value->end_time,
+                'y' => $value->total_service_cost,
+            );
+        }
+        // Product sale of date and room
+        $productList = Product::all();
+        $productCostAndSales =
+            ProductSale::where('sales_date', '=', $date)
+            ->groupBy('product_sales.product_code')
+            ->select(
+                'product_sales.product_code',
+                DB::raw('SUM(product_sales.sales_amount) as total_sales_amount')
+            )
+            ->get();
+        foreach($productList as $value){
+            $totalSales  = 0;
+            dd($productCostAndSales, $productList);
+            foreach($productCostAndSales as $salesValue){
+                if($value->product_code == $salesValue->product_code){
+                    $totalSales = $salesValue->total_sales_amount * $value->product_sale_price;
+                    break;
+                }
+            }
+            $totalSales = (int)$value->total_sales_amount;
+            $resultData['sales_by_order_type'][] = array(
+                'value' => $totalSales,
+                'label' => $value->product_name,
+                'color' => ''
+            );
+        }
+
+        return $resultData;
+    }
+
     public static function calculateProductExport(){
         $productList = Product::all();
         $productDataExport = array();
@@ -91,7 +209,6 @@ class Calculator
             $sumSales += $productDataExport[$value->product_code]['product_sales'];
             $sumProfit += $productDataExport[$value->product_code]['product_profit'];
         }
-
 
         return array(
             'sumCost' => $sumCost,

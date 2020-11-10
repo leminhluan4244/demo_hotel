@@ -24,3 +24,6 @@ Route::post('upload', [ImportController::class, 'upload']);
 Route::get('export/room', [ExportController::class, 'roomExport']);
 Route::get('export/product', [ExportController::class, 'productExport']);
 Route::get('export/all', [ExportController::class, 'allExport']);
+Route::get('export/date/room', [ExportController::class, 'exportDateAndRoom']);
+Route::get('export/room/date', [ExportController::class, 'roomExportDate']);
+Route::get('export/room/date/all', [ExportController::class, 'roomExportDates']);
