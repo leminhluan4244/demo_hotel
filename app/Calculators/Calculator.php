@@ -45,124 +45,6 @@ class Calculator
         );
     }
 
-    public static function calculateRoomExportDate($room, $date){
-        $roomCostAndSales = Bill::select(
-            DB::raw('SUM(bill_total_service_cost) as total_service_cost'),
-            DB::raw('SUM(bill_laundry_costs) as total_laundry_costs'),
-            DB::raw('DATE(bill_end_time) AS bill_end_time'),
-            'room_code'
-        )
-        ->where('room_code', '=', $room)
-        ->where(DB::raw('DATE(bill_end_time)'), '=', $date)
-        ->groupBy('room_code', 'bill_end_time')
-        ->first();
-
-        return array(
-            'sumCost' => (int)$roomCostAndSales->total_laundry_costs,
-            'sumSales' => (int)$roomCostAndSales->total_service_cost,
-            'sumProfit' =>  (int)$roomCostAndSales->total_service_cost - (int)$roomCostAndSales->total_laundry_costs,
-            'room_code' => $roomCostAndSales->room_code,
-            'bill_end_time' => $roomCostAndSales->bill_end_time,
-        );
-    }
-
-    public static function calculateRoomExportDates($room){
-        $roomDataExport = array();
-        $roomCostAndSales = Bill::select(
-            DB::raw('SUM(bill_total_service_cost) as total_service_cost'),
-            DB::raw('SUM(bill_laundry_costs) as total_laundry_costs'),
-            DB::raw('DATE(bill_end_time) as end_time'),
-            'room_code'
-        )
-        ->where('room_code', '=', $room)
-        ->where('bill_end_time', '<>', null)
-        ->groupBy(DB::raw('DATE(bill_end_time)'), 'room_code')
-        ->get();
-        $sumCost = 0;
-        $sumSales = 0;
-        $sumProfit = 0;
-        foreach($roomCostAndSales as $value){
-            $roomDataExport[$value->end_time]['cost'] = (int)$value->total_laundry_costs;
-            $roomDataExport[$value->end_time]['sales'] = (int)$value->total_service_cost;
-            $roomDataExport[$value->end_time]['profit'] = $roomDataExport[$value->end_time]['sales'] - $roomDataExport[$value->end_time]['cost'];
-            $sumCost += $roomDataExport[$value->end_time]['cost'];
-            $sumSales += $roomDataExport[$value->end_time]['sales'];
-            $sumProfit += $roomDataExport[$value->end_time]['profit'];
-        }
-
-        return array(
-            'sumCost' => $sumCost,
-            'sumSales' => $sumSales,
-            'sumProfit' => $sumProfit,
-            'detail' => $roomDataExport,
-        );
-    }
-
-    public static function calculateDateAndRoom($date, $room){
-        $resultData = array(
-            'transactions' => 0,
-            'voided' => 0,
-            'customers' => 0,
-            'netsale' => 0,
-            'taxes' => 0,
-            'discounts' => 0,
-            'sales_data' => array(
-                'seriesName' => 'Sale Chart',
-                'data' => array()
-            ),
-            'sales_by_order_type' => array(),
-            'top_five_sales' => array()
-        );
-        // Service sale of date and room
-        $roomCostAndSales =
-            Bill::select(
-                DB::raw('SUM(bill_total_service_cost) as total_service_cost'),
-                DB::raw('SUM(bill_laundry_costs) as total_laundry_costs'),
-                DB::raw('DATE(bill_end_time) as end_time'),
-                'room_code'
-            )
-            ->where('room_code', '=', $room)
-            ->where('bill_end_time', '<>', null)
-            ->where(DB::raw('DATE(bill_end_time)'), '<=', $date)
-            ->groupBy(DB::raw('DATE(bill_end_time)'), 'room_code')
-            ->limit(7)
-            ->get();
-        foreach($roomCostAndSales as $value){
-            $resultData['sales_data']['data'][]= array(
-                'x' => $value->end_time,
-                'y' => $value->total_service_cost,
-            );
-        }
-        // Product sale of date and room
-        $productList = Product::all();
-        $productCostAndSales =
-            ProductSale::where('sales_date', '=', $date)
-            ->groupBy('product_sales.product_code')
-            ->select(
-                'product_sales.product_code',
-                DB::raw('SUM(product_sales.sales_amount) as total_sales_amount')
-            )
-            ->get();
-        foreach($productList as $value){
-            $totalSales  = 0;
-            dd($productCostAndSales, $productList);
-            foreach($productCostAndSales as $salesValue){
-                if($value->product_code == $salesValue->product_code){
-                    $totalSales = $salesValue->total_sales_amount * $value->product_sale_price;
-                    break;
-                }
-            }
-            $totalSales = (int)$value->total_sales_amount;
-            $resultData['sales_by_order_type'][] = array(
-                'value' => $totalSales,
-                'label' => $value->product_name,
-                'color' => ''
-            );
-        }
-
-        return $resultData;
-    }
-
     public static function calculateProductExport(){
         $productList = Product::all();
         $productDataExport = array();
@@ -216,5 +98,194 @@ class Calculator
             'sumProfit' => $sumProfit,
             'detail' => $productDataExport,
         );
+    }
+
+
+    public static function calculateMobileDateRoom($date, $room){
+        $resultData = array(
+            'transactions' => 0,
+            'voided' => 0,
+            'customers' => 0,
+            'netsale' => 0,
+            'taxes' => 0,
+            'discounts' => 0,
+            'sales_data' => array(
+                'seriesName' => 'Sale Chart',
+                'data' => array(),
+                'color' => '#e8f0fc'
+            ),
+            'sales_by_order_type' => array(),
+            'top_five_sales' => array()
+        );
+        // Service sale of date and room
+        // Last 7 days
+        $chartColumDate = Bill::select(DB::raw('DATE(bill_end_time) as end_time'))
+            ->where('room_code', '=', $room)
+            ->where(DB::raw('DATE(bill_end_time)'), '<=', $date)
+            ->groupBy('end_time')
+            ->orderBy('end_time', 'DESC')
+            ->limit(7);
+
+        $billColumData = Bill::where('room_code', '=', $room)
+            ->whereIn(DB::raw('DATE(bill_end_time)'), $chartColumDate->pluck('end_time'))
+            ->select(DB::raw('DATE(bill_end_time) as end_time'),'bill_total_service_cost')
+            ->orderBy('end_time', 'DESC')
+            ->get();
+        $lastSevenDays = array();
+        foreach($billColumData as $bill){
+            if(!isset($lastSevenDays[$bill->end_time])){
+                $lastSevenDays[$bill->end_time] = 0;
+
+            }
+            $lastSevenDays[$bill->end_time] = $lastSevenDays[$bill->end_time] + $bill->bill_total_service_cost;
+        }
+        $resultData['sales_data']['data'][]= array(
+            'x' => $date,
+            'y' => 0,
+        );
+        foreach($lastSevenDays as $dateKey => $salesValue){
+            $resultData['sales_data']['data'][]= array(
+                'x' => $dateKey,
+                'y' => $salesValue,
+            );
+        }
+
+        // Product sales
+        $billCircleData = ProductSale::where('bill_code', 'like', "P{$room}%")
+            ->where('sales_date', '=', $date)
+            ->join('products', 'products.product_code', '=', 'product_sales.product_code')
+            ->select(
+                DB::raw('SUM(product_sales.sales_amount * product_sales.sales_cost) AS sales_value'),
+                'product_sales.product_code',
+                'products.product_name',
+                'product_sales.sales_amount'
+            )
+            ->groupBy('product_sales.product_code')
+            ->orderBy('sales_value', 'DESC')
+            ->get();
+        $colorArr = array(
+            '#f5222d',
+            '#389e0d',
+            '#722ed1',
+            '#262626',
+            '#1890ff',
+            '#2f54eb',
+        );
+        foreach($billCircleData as $indexKey => $productSaleValue){
+            $colorKey = $indexKey % (sizeof($colorArr));
+            $resultData['sales_by_order_type'][]= array(
+                'value' => $productSaleValue->sales_value,
+                'label' => $productSaleValue->product_name,
+                'color' => $colorArr[$colorKey],
+            );
+        }
+        // Top 5 sales
+        $id = 1;
+        foreach($billCircleData as $productSaleValue){
+            if($id <= 5){
+                $resultData['top_five_sales'][]= array(
+                    'id' => $id,
+                    'product' => $productSaleValue->product_name,
+                    'total_sales' => $productSaleValue->sales_amount,
+                    'total_revenue' => $productSaleValue->sales_value,
+                );
+                $id++;
+            } else {
+                break;
+            }
+        }
+        return $resultData;
+    }
+
+    public static function calculateMobileDateFull($date){
+        $resultData = array(
+            'transactions' => 0,
+            'voided' => 0,
+            'customers' => 0,
+            'netsale' => 0,
+            'taxes' => 0,
+            'discounts' => 0,
+            'sales_data' => array(
+                'seriesName' => 'Sale Chart',
+                'data' => array(),
+                'color' => '#e8f0fc'
+            ),
+            'sales_by_order_type' => array(),
+            'top_five_sales' => array()
+        );
+        // Service sale of date and room
+        // Last 7 days
+        $chartColumDate = Bill::select(DB::raw('DATE(bill_end_time) as end_time'))
+            ->where(DB::raw('DATE(bill_end_time)'), '<=', $date)
+            ->groupBy('end_time')
+            ->orderBy('end_time', 'DESC')
+            ->limit(7);
+
+        $billColumData = Bill::whereIn(DB::raw('DATE(bill_end_time)'), $chartColumDate->pluck('end_time'))
+            ->select(DB::raw('DATE(bill_end_time) as end_time'),'bill_total_service_cost')
+            ->orderBy('end_time', 'DESC')
+            ->get();
+        $lastSevenDays = array();
+        foreach($billColumData as $bill){
+            if(!isset($lastSevenDays[$bill->end_time])){
+                $lastSevenDays[$bill->end_time] = 0;
+            }
+            $lastSevenDays[$bill->end_time] = $lastSevenDays[$bill->end_time] + $bill->bill_total_service_cost;
+        }
+        $resultData['sales_data']['data'][]= array(
+            'x' => $date,
+            'y' => 0,
+        );
+        foreach($lastSevenDays as $dateKey => $salesValue){
+            $resultData['sales_data']['data'][]= array(
+                'x' => $dateKey,
+                'y' => $salesValue,
+            );
+        }
+
+        // Product sales
+        $billCircleData = ProductSale::where('sales_date', '=', $date)
+            ->join('products', 'products.product_code', '=', 'product_sales.product_code')
+            ->select(
+                DB::raw('SUM(product_sales.sales_amount * product_sales.sales_cost) AS sales_value'),
+                'product_sales.product_code',
+                'products.product_name',
+                'product_sales.sales_amount'
+            )
+            ->groupBy('product_sales.product_code')
+            ->orderBy('sales_value', 'DESC')
+            ->get();
+        $colorArr = array(
+            '#f5222d',
+            '#389e0d',
+            '#722ed1',
+            '#262626',
+            '#1890ff',
+            '#2f54eb',
+        );
+        foreach($billCircleData as $indexKey => $productSaleValue){
+            $colorKey = $indexKey % (sizeof($colorArr));
+            $resultData['sales_by_order_type'][]= array(
+                'value' => $productSaleValue->sales_value,
+                'label' => $productSaleValue->product_name,
+                'color' => $colorArr[$colorKey],
+            );
+        }
+        // Top 5 sales
+        $id = 1;
+        foreach($billCircleData as $productSaleValue){
+            if($id <= 5){
+                $resultData['top_five_sales'][]= array(
+                    'id' => $id,
+                    'product' => $productSaleValue->product_name,
+                    'total_sales' => $productSaleValue->sales_amount,
+                    'total_revenue' => $productSaleValue->sales_value,
+                );
+                $id++;
+            } else {
+                break;
+            }
+        }
+        return $resultData;
     }
 }

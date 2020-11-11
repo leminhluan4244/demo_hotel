@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Calculators\Calculator;
 use App\Http\Controllers\Base\Response;
 use Illuminate\Http\Request;
+use App\Models\Room;
 
 class ExportController extends Controller
 {
@@ -13,15 +14,11 @@ class ExportController extends Controller
     public function __construct()
     {
         $this->ruleData = array(
-            'room_date' => array(
+            'date_room' => array(
                 'room' => 'required|max:255|string|exists:rooms,room_code',
                 'date' => 'required|date|date_format:Y-m-d',
             ),
-            'room_date_all' => array(
-                'room' => 'required|max:255|string|exists:rooms,room_code'
-            ),
-            'room_date' => array(
-                'room' => 'required|max:255|string|exists:rooms,room_code',
+            'date_full' => array(
                 'date' => 'required|date|date_format:Y-m-d',
             ),
         )
@@ -51,9 +48,14 @@ class ExportController extends Controller
         return Response::response($allData);
     }
 
-    public function roomExportDate(Request $request){
+    public function mobileRoomList(){
+        $roomData = Room::select('id', 'room_code')->get();
+        return Response::response($roomData);
+    }
+
+    public function mobileDateRoom(Request $request){
         $this->config([
-            'rule' => $this->ruleData['room_date'],
+            'rule' => $this->ruleData['date_room'],
             'request' => $request,
         ]);
         // Run check validate if false
@@ -63,14 +65,14 @@ class ExportController extends Controller
                 $this->errors->all()
             );
         } else {
-            $roomData = Calculator::calculateRoomExportDate($request->room, $request->date);
+            $roomData = Calculator::calculateMobileDateRoom($request->date, $request->room);
             return Response::response($roomData);
         }
     }
 
-    public function roomExportDates(Request $request){
+    public function mobileDateFull(Request $request){
         $this->config([
-            'rule' => $this->ruleData['room_date_all'],
+            'rule' => $this->ruleData['date_full'],
             'request' => $request,
         ]);
         // Run check validate if false
@@ -80,24 +82,7 @@ class ExportController extends Controller
                 $this->errors->all()
             );
         } else {
-            $roomData = Calculator::calculateRoomExportDates($request->room);
-            return Response::response($roomData);
-        }
-    }
-
-    public function exportDateAndRoom(Request $request){
-        $this->config([
-            'rule' => $this->ruleData['room_date_all'],
-            'request' => $request,
-        ]);
-        // Run check validate if false
-        $this->exam();
-        if ($this->status == self::VALIDATE) {
-            return Response::errors(
-                $this->errors->all()
-            );
-        } else {
-            $roomData = Calculator::calculateDateAndRoom($request->date, $request->room);
+            $roomData = Calculator::calculateMobileDateFull($request->date);
             return Response::response($roomData);
         }
     }
