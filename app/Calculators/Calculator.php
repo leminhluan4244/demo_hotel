@@ -11,16 +11,71 @@ use Illuminate\Support\Facades\DB;
 
 class Calculator
 {
-    public static function makeOnlyRoom(){
+    public static function makeOnlyRoom($startDate, $endDate, $productCode ,$perPage){
 
     }
 
-    public static function makeMultiRoom(){
-
+    public static function makeMultiRoom($startDate, $endDate, $perPage){
+        $sumSales = 0;
+        $sumCost = 0;
+        $sumProfit = 0;
+        $roomObject = Room::paginate($perPage);
+        $responseData = array(
+            'sum_cost' => 0,
+            'sum_sales' => 0,
+            'sum_profit' => 0,
+            'detail' => array(),
+            'pagination' => array(
+                'total' => $roomObject->total(),
+                'lastPage' => $roomObject->lastPage(),
+                'perPage' => $roomObject->perPage(),
+                'currentPage' => $roomObject->currentPage(),
+            )
+        );
+        $roomList = $roomObject->items();
+        $whereInArr = array();
+        foreach($roomList as $value){
+            $whereInArr[] = $value->room_code;
+        }
+        $roomCostAndSales = Bill::whereIn('room_code', $whereInArr);
+        if(null != $startDate){
+            $roomCostAndSales = $roomCostAndSales->where(DB::raw('DATE(bill_end_time)'), '>=', $startDate);
+        }
+        if(null != $endDate){
+            $roomCostAndSales = $roomCostAndSales->where(DB::raw('DATE(bill_end_time)'), '<=', $endDate);
+        }
+        $roomCostAndSales = $roomCostAndSales->select(
+            DB::raw('SUM(bill_total_service_cost) as total_service_cost'),
+            DB::raw('SUM(bill_laundry_costs) as total_laundry_costs'),
+            'room_code'
+        )
+        ->groupBy('room_code')
+        ->get();
+        $roomDataExport = array();
+        foreach($roomList as $value){
+            $roomDataExport[$value->room_code]['cost'] = 0;
+            $roomDataExport[$value->room_code]['profit'] = 0;
+        }
+        foreach($roomCostAndSales as $value){
+            $roomDataExport[$value->room_code]['room_code'] = $value->room_code;
+            $roomDataExport[$value->room_code]['cost'] = (int)$value->total_laundry_costs;
+            $roomDataExport[$value->room_code]['sales'] = (int)$value->total_service_cost;
+            $roomDataExport[$value->room_code]['profit'] = $roomDataExport[$value->room_code]['sales'] - $roomDataExport[$value->room_code]['cost'];
+            $sumCost += $roomDataExport[$value->room_code]['cost'];
+            $sumSales += $roomDataExport[$value->room_code]['sales'];
+            $sumProfit += $roomDataExport[$value->room_code]['profit'];
+        }
+        foreach($roomDataExport as $value){
+            $responseData['detail'][] = $value;
+        }
+        $responseData['sum_cost'] = $sumCost;
+        $responseData['sum_sales'] = $sumSales;
+        $responseData['sum_profit'] = $sumProfit;
+        return $responseData;
     }
 
     public static function makeOnlyProduct($startDate, $endDate, $productCode ,$perPage){
-        $productObject = Product::where('', $productCode)->first();
+        $productObject = Product::where('product_code', $productCode)->first();
         $responseData = array(
             'sum_cost' => 0,
             'sum_sales' => 0,

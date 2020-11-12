@@ -117,11 +117,11 @@ class ExportController extends Controller
                 $this->errors->all()
             );
         } else {
-            $roomData = Calculator::calculateMobileRoomExport(
-                $request->start_date,
-                $request->end_date,
-                $request->room_code
-            );
+            if(!isset($request->room_code) || null == $request->room_code){
+                $roomData = Calculator::makeMultiRoom($request->start_date, $request->end_date, $request->per_page);
+            } else {
+                $roomData = Calculator::makeOnlyRoom($request->start_date, $request->end_date, $request->room_code, $request->per_page);
+            }
             return Response::response($roomData);
         }
     }
@@ -141,7 +141,7 @@ class ExportController extends Controller
             if(!isset($request->product_code) || null == $request->product_code){
                 $roomData = Calculator::makeMultiProduct($request->start_date, $request->end_date, $request->per_page);
             } else {
-                $roomData = Calculator::calculateMobileProductExport($request->start_date, $request->end_date, $request->product_code);
+                $roomData = Calculator::makeOnlyProduct($request->start_date, $request->end_date, $request->product_code, $request->per_page);
             }
             return Response::response($roomData);
         }
