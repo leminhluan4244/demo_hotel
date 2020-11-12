@@ -4,7 +4,10 @@ namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Throwable;
-
+use Exception;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 class Handler extends ExceptionHandler
 {
     /**
@@ -50,6 +53,15 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $exception)
     {
+        if (\Request::is('api/*')) {
+            if ($exception instanceof AuthorizationException || $exception instanceof AuthenticationException) {
+                return Response::errors(array('message' => 'Unauthorized'));
+            } else if($exception instanceof NotFoundHttpException) {
+                return Response::errors(array('message' => 'Route Not support'));
+            } else {
+                return Response::errors(array('exception' => $exception));
+            }
+        }
         return parent::render($request, $exception);
     }
 }

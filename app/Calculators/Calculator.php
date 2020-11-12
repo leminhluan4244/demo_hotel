@@ -11,8 +11,45 @@ use Illuminate\Support\Facades\DB;
 
 class Calculator
 {
-    public static function makeOnlyRoom($startDate, $endDate, $productCode ,$perPage){
-
+    public static function makeOnlyRoom($startDate, $endDate, $roomCode ,$perPage){
+        $responseData = array(
+            'sum_cost' => 0,
+            'sum_sales' => 0,
+            'sum_profit' => 0,
+            'detail' => array(),
+            'pagination' => array(
+                'total' => 1,
+                'lastPage' => 1,
+                'perPage' => $perPage,
+                'currentPage' => 1,
+            )
+        );
+        $roomCostAndSales = Bill::where('room_code', $roomCode);
+        if(null != $startDate){
+            $roomCostAndSales = $roomCostAndSales->where(DB::raw('DATE(bill_end_time)'), '>=', $startDate);
+        }
+        if(null != $endDate){
+            $roomCostAndSales = $roomCostAndSales->where(DB::raw('DATE(bill_end_time)'), '<=', $endDate);
+        }
+        $roomCostAndSales = $roomCostAndSales->select(
+            DB::raw('SUM(bill_total_service_cost) as total_service_cost'),
+            DB::raw('SUM(bill_laundry_costs) as total_laundry_costs'),
+            'room_code'
+        )
+        ->groupBy('room_code')
+        ->first();
+        $total_laundry_costs = isset($roomCostAndSales->total_laundry_costs) ? $roomCostAndSales->total_laundry_costs : 0;
+        $total_service_cost = isset($roomCostAndSales->total_service_cost) ? $roomCostAndSales->total_service_cost : 0;
+        $responseData['detail'][] = array(
+            'room_code' => $roomCode,
+            'cost' => $total_laundry_costs,
+            'sales' => $total_service_cost,
+            'profit' => $total_service_cost - $total_laundry_costs,
+        );
+        $responseData['sum_cost'] = $total_laundry_costs;
+        $responseData['sum_sales'] = $total_service_cost;
+        $responseData['sum_profit'] = $total_service_cost - $total_laundry_costs;
+        return $responseData;
     }
 
     public static function makeMultiRoom($startDate, $endDate, $perPage){
@@ -106,6 +143,8 @@ class Calculator
             DB::raw('SUM(sales_amount) as total_sales_amount'),
             'product_code'
         )->first();
+        $total_enter_amount = isset($productCost->total_enter_amount) ? $productCost->total_enter_amount : 0;
+        $total_sales_amount = isset($productSales->total_sales_amount) ? $productSales->total_sales_amount : 0;
         $responseData['detail'][] = array(
             'product_code' => $productObject->product_code,
             'product_name' => $productObject->product_name,
@@ -114,15 +153,15 @@ class Calculator
             'product_amount' => $productObject->product_amount,
             'product_input_price' => $productObject->product_input_price,
             'product_sale_price' => $productObject->product_sale_price,
-            'product_input' => (int)$productCost->total_enter_amount,
-            'product_out' => (int)$productSales->total_sales_amount,
-            'product_cost' => (int)$productCost->total_enter_amount * (int)$productObject->product_input_price,
-            'product_sales' => (int)$productSales->total_sales_amount * (int)$productObject->product_sale_price,
+            'product_input' => $total_enter_amount,
+            'product_out' => $total_sales_amount,
+            'product_cost' => $total_enter_amount * $productObject->product_input_price,
+            'product_sales' => $total_sales_amount * $productObject->product_sale_price,
             'product_profit' => 0,
         );
-        $responseData['sum_cost'] = (int)$productCost->total_enter_amount * (int)$productObject->product_input_price;
-        $responseData['sum_sales'] = (int)$productSales->total_sales_amount * (int)$productObject->product_sale_price;
-        $responseData['sum_profit'] = ($productObject->product_sale_price -  $productObject->product_input_price) * (int)$productSales->total_sales_amount;
+        $responseData['sum_cost'] = $total_enter_amount * $productObject->product_input_price;
+        $responseData['sum_sales'] = $total_sales_amount * $productObject->product_sale_price;
+        $responseData['sum_profit'] = ($productObject->product_sale_price -  $productObject->product_input_price) * $total_sales_amount;
 
         return $responseData;
     }

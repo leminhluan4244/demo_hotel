@@ -25,7 +25,7 @@ class ExportController extends Controller
             'room_export' => array(
                 'start_date' => 'date|date_format:Y-m-d|before_or_equal:end_date',
                 'end_date' => 'date|date_format:Y-m-d',
-                'room_code' => 'string|max:20|exists:bills,room_code',
+                'room_code' => 'string|max:20|exists:rooms,room_code',
             ),
             'product_export' => array(
                 'start_date' => 'date|date_format:Y-m-d|before_or_equal:end_date',
