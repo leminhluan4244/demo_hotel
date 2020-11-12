@@ -33,13 +33,13 @@ Route::middleware('auth:api')->group(function () {
     // Route::get('export/product', [ExportController::class, 'productExport']);
     // Route::get('export/all', [ExportController::class, 'allExport']);
 
-    Route::get('mobile/room', [ExportController::class, 'mobileRoomList']);
-    Route::get('mobile/product', [ExportController::class, 'mobileProductList']);
-    Route::get('mobile/date/room', [ExportController::class, 'mobileDateRoom']);
-    Route::get('mobile/date/full', [ExportController::class, 'mobileDateFull']);
+    Route::get('room/list', [ExportController::class, 'mobileRoomList']);
+    Route::get('product/list', [ExportController::class, 'mobileProductList']);
+    Route::get('date/room', [ExportController::class, 'mobileDateRoom']);
+    Route::get('date/full', [ExportController::class, 'mobileDateFull']);
     //Table list pagination
-    Route::get('mobile/room', [ExportController::class, 'mobileRoomExport']);
-    Route::get('mobile/product', [ExportController::class, 'mobileProductExport']);
+    Route::get('room/export', [ExportController::class, 'mobileRoomExport']);
+    Route::get('product/export', [ExportController::class, 'mobileProductExport']);
 });
 // Route::middleware('auth:api')->get('/user', function (Request $request) {
 //     return $request->user();

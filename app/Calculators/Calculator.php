@@ -38,8 +38,8 @@ class Calculator
         )
         ->groupBy('room_code')
         ->first();
-        $total_laundry_costs = isset($roomCostAndSales->total_laundry_costs) ? $roomCostAndSales->total_laundry_costs : 0;
-        $total_service_cost = isset($roomCostAndSales->total_service_cost) ? $roomCostAndSales->total_service_cost : 0;
+        $total_laundry_costs = isset($roomCostAndSales->total_laundry_costs) ? (int)$roomCostAndSales->total_laundry_costs : 0;
+        $total_service_cost = isset($roomCostAndSales->total_service_cost) ? (int)$roomCostAndSales->total_service_cost : 0;
         $responseData['detail'][] = array(
             'room_code' => $roomCode,
             'cost' => $total_laundry_costs,
@@ -143,8 +143,8 @@ class Calculator
             DB::raw('SUM(sales_amount) as total_sales_amount'),
             'product_code'
         )->first();
-        $total_enter_amount = isset($productCost->total_enter_amount) ? $productCost->total_enter_amount : 0;
-        $total_sales_amount = isset($productSales->total_sales_amount) ? $productSales->total_sales_amount : 0;
+        $total_enter_amount = isset($productCost->total_enter_amount) ? (int)$productCost->total_enter_amount : 0;
+        $total_sales_amount = isset($productSales->total_sales_amount) ? (int)$productSales->total_sales_amount : 0;
         $responseData['detail'][] = array(
             'product_code' => $productObject->product_code,
             'product_name' => $productObject->product_name,
