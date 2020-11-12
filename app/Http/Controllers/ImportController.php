@@ -122,7 +122,7 @@ class ImportController extends Controller
     private function makeBill(){
         $sheet = $this->spreadsheet->getSheetByName('Ghi So');
         $insertParams = array();
-        $rowData = $sheet->rangeToArray('B14:T100', null, true, false);
+        $rowData = $sheet->rangeToArray('B14:T1000', null, true, false);
         foreach($rowData as $row){
             if(null == $row[0]){
                 break;
