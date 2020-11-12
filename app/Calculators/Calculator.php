@@ -431,7 +431,6 @@ class Calculator
         }
         return $resultData;
     }
-
     public static function calculateMobileRoomExport($startDate, $endDate, $roomCode){
         $roomDataExport = array();
         $sumCost = 0;

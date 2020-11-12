@@ -36,8 +36,6 @@ Route::middleware('auth:api')->group(function () {
     Route::get('mobile/room', [ExportController::class, 'mobileRoomExport']);
     Route::get('mobile/product', [ExportController::class, 'mobileProductExport']);
 });
-
 // Route::middleware('auth:api')->get('/user', function (Request $request) {
 //     return $request->user();
 // });
-
