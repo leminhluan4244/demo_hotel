@@ -19,27 +19,30 @@ use Illuminate\Support\Facades\Route;
 Route::post('login', [AuthController::class, 'login']);
 Route::post('signup', [AuthController::class, 'signup']);
 
-Route::middleware('auth:api')->group(function () {
 
-    // User action
-    Route::post('logout', [AuthController::class, 'logout']);
-    Route::get('user', [AuthController::class, 'user']);
+Route::middleware('access.token')->group(function () {
+    Route::middleware('auth:api')->group(function () {
 
-    // Import Data
-    Route::post('import', [ImportController::class, 'index']);
-    Route::post('upload', [ImportController::class, 'upload']);
-    // Statistics and chart
-    // Route::get('export/room', [ExportController::class, 'roomExport']);
-    // Route::get('export/product', [ExportController::class, 'productExport']);
-    // Route::get('export/all', [ExportController::class, 'allExport']);
+        // User action
+        Route::post('logout', [AuthController::class, 'logout']);
+        Route::get('user', [AuthController::class, 'user']);
 
-    Route::get('room/list', [ExportController::class, 'mobileRoomList']);
-    Route::get('product/list', [ExportController::class, 'mobileProductList']);
-    Route::get('date/room', [ExportController::class, 'mobileDateRoom']);
-    Route::get('date/full', [ExportController::class, 'mobileDateFull']);
-    //Table list pagination
-    Route::get('room/export', [ExportController::class, 'mobileRoomExport']);
-    Route::get('product/export', [ExportController::class, 'mobileProductExport']);
+        // Import Data
+        Route::post('import', [ImportController::class, 'index']);
+        Route::post('upload', [ImportController::class, 'upload']);
+        // Statistics and chart
+        // Route::get('export/room', [ExportController::class, 'roomExport']);
+        // Route::get('export/product', [ExportController::class, 'productExport']);
+        // Route::get('export/all', [ExportController::class, 'allExport']);
+
+        Route::get('room/list', [ExportController::class, 'mobileRoomList']);
+        Route::get('product/list', [ExportController::class, 'mobileProductList']);
+        Route::get('date/room', [ExportController::class, 'mobileDateRoom']);
+        Route::get('date/full', [ExportController::class, 'mobileDateFull']);
+        //Table list pagination
+        Route::get('room/export', [ExportController::class, 'mobileRoomExport']);
+        Route::get('product/export', [ExportController::class, 'mobileProductExport']);
+    });
 });
 // Route::middleware('auth:api')->get('/user', function (Request $request) {
 //     return $request->user();
